@@ -13,6 +13,7 @@ const build = await Bun.build({
   entrypoints: [join(root, "apps/cli/src/index.ts")],
   outdir: join(out, "bin"),
   target: "node",
+  define: { JEVGREP_BUNDLED: "true" },
   format: "esm",
   metafile: true,
   external: ["pyodide", "typescript"],
