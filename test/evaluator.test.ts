@@ -434,3 +434,58 @@ for (const kind of ["cancelled", "authentication"] as const)
       server.stop(true);
     }
   });
+
+test("cached answers validate source after lookup before returning", async () => {
+  const { createEvaluationCache } = await import("../packages/core/src/cache");
+  const { mkdtemp, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const directory = await mkdtemp(join(tmpdir(), "jg-cached-validation-"));
+  const cache = createEvaluationCache({ directory });
+  let valid = true;
+  let invalidateOnLookup = false;
+  let validations = 0;
+  let uploads = 0;
+  const evaluator = createEvaluator({
+    provider: "vercel",
+    apiKey: "fixture",
+    signal: new AbortController().signal,
+    cache: {
+      ...cache,
+      async get(input) {
+        const answer = await cache.get(input);
+        if (invalidateOnLookup) valid = false;
+        return answer;
+      },
+    },
+    fetch: async () => {
+      uploads++;
+      return Response.json({ answers: { q: { type: "noul", noul: 0.8 } } });
+    },
+  });
+  const request = {
+    state: "source fixture",
+    questions: { q: { type: "boolean" as const, instructions: "Relevant?" } },
+  };
+  const policy = {
+    async beforeAttempt() {
+      validations++;
+      if (!valid) throw new EvaluationFailure("source-invalid");
+    },
+  };
+  try {
+    expect(await evaluator.evaluate(request, policy)).toEqual({ q: 0.8 });
+    expect(validations).toBe(1);
+    expect(await evaluator.evaluate(request, policy)).toEqual({ q: 0.8 });
+    expect(validations).toBe(2);
+    invalidateOnLookup = true;
+    await expect(evaluator.evaluate(request, policy)).rejects.toMatchObject({
+      kind: "source-invalid",
+    });
+    expect(validations).toBe(3);
+    expect(uploads).toBe(1);
+    expect(evaluator.cacheHits).toBe(1);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

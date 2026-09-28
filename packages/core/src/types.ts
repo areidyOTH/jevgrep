@@ -55,9 +55,15 @@ export type SearchInput = {
   protectedPaths?: string[];
 };
 export type Evaluator = {
+  /**
+   * Explicit opt-in: validates before every attempt and cached return.
+   * Wrappers must forward policy unchanged or omit this marker.
+   */
+  readonly validatesBeforeAttempt?: true;
   readonly requests: number;
   readonly cacheHits?: number;
   readonly cacheIssues?: Array<{ kind: string; count: number }>;
+  /** Opted-in evaluators must invoke beforeAttempt at upload/retry and cache-return boundaries. */
   evaluate(
     request: EvaluationRequest,
     policy?: { navigation?: boolean; beforeAttempt?: () => Promise<void> },

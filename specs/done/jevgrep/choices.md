@@ -169,9 +169,10 @@ Owner: [cache](../../../packages/core/src/cache.ts).
 
 A request is queued with source from A and B. While it waits, the user edits A or
 adds an ignore rule excluding it. The request retains A's original content hash,
-a fingerprint of the bytes it used, outside the data sent to Jev. Before evaluating
-the buffered request, and before each provider attempt after any waiting, the
-same reader checks eligibility and compares current bytes with that hash. A
+a fingerprint of the bytes it used, outside the data sent to Jev. At each provider attempt after any waiting, or immediately before returning
+cached answers, the same reader checks eligibility and compares current bytes
+with that hash. Custom evaluators retain caller-side validation unless they
+explicitly promise these later checks. A
 changed source cannot knowingly be submitted again. If a navigation group has
 both invalid and healthy members, finite splitting lets the healthy siblings
 continue instead of discarding the entire group.
@@ -180,7 +181,7 @@ The same rule applies when one file supplies context for another. Each distinct
 source donor is checked; stale excerpts are removed and the result becomes
 incomplete while admitted locations remain available. A final pass also checks
 candidates after role classification, for every language. Successful cache reuse
-still follows the caller's initial source validation.
+is validated after cache lookup, so a change during lookup cannot bypass the check.
 
 ```text
 bind buffered content to its snapshot

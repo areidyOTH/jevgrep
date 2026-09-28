@@ -57,8 +57,9 @@ export async function retrieve(input: SearchInput, evaluator: Evaluator): Promis
       validationQueue = pending.catch(() => {});
       return pending;
     };
-    // Preserve queued request order while checks perform I/O; provider work stays concurrent.
-    await beforeAttempt();
+    // Custom evaluators retain caller-side validation unless they explicitly own
+    // the later cache-return/upload boundary, including queues and retries.
+    if (!evaluator.validatesBeforeAttempt) await beforeAttempt();
     return evaluator.evaluate(request, { navigation, beforeAttempt });
   }
   let entriesSeen = 0;

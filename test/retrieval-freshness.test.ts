@@ -1,5 +1,6 @@
 import { routeProviderFetch } from "./fixtures/provider-route.mjs";
-import { expect } from "bun:test";
+import { expect, spyOn } from "bun:test";
+import * as filesystem from "node:fs/promises";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -45,6 +46,8 @@ testIfDocker(
           provider: "vercel",
           fetch: routeProviderFetch(fetch, `http://127.0.0.1:${server.port}`),
           signal,
+          // Hold every provider slot until the ignore write has completed.
+          concurrency: 8,
         }),
       );
       expect(uploads).toBe(8);
@@ -358,3 +361,46 @@ testIfDocker(
   },
   120_000,
 );
+
+for (const kind of ["production", "custom"] as const)
+  testIfDocker(
+    `cold ${kind} navigation reads source once for discovery and once for upload`,
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), "jg-validation-reads-"));
+      const target = join(root, "sentinel.txt");
+      const originalOpen = filesystem.open;
+      let reads = 0;
+      await writeFile(target, "source sentinel\n");
+      const opened = spyOn(filesystem, "open").mockImplementation((...args) => {
+        if (args[0] === target) reads++;
+        return originalOpen(...args);
+      });
+      try {
+        const signal = new AbortController().signal;
+        const evaluator =
+          kind === "production"
+            ? createEvaluator({
+                provider: "vercel",
+                apiKey: "fixture",
+                signal,
+                fetch: async () => Response.json({ answers: { q0: { type: "noul", noul: 0.1 } } }),
+              })
+            : {
+                requests: 1,
+                async evaluate() {
+                  // A custom implementation need not support deferred validation.
+                  expect(reads).toBe(2);
+                  return { q0: 0.1 };
+                },
+              };
+        const result = await retrieve({ root, query: "unrelated", signal }, evaluator);
+        expect(result.status).toBe("complete");
+        expect(result.files).toEqual([]);
+        expect(result.counts.requests).toBe(1);
+        expect(reads).toBe(2);
+      } finally {
+        opened.mockRestore();
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+  );
