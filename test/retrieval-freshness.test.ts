@@ -45,6 +45,8 @@ testIfDocker(
           provider: "vercel",
           fetch: routeProviderFetch(fetch, `http://127.0.0.1:${server.port}`),
           signal,
+          // Hold every provider slot until the ignore write has completed.
+          concurrency: 8,
         }),
       );
       expect(uploads).toBe(8);
