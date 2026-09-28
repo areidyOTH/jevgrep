@@ -49,6 +49,8 @@ producing a partial tree. Package manifests must be resolvable through Node.
 Supporting a new dependency structure requires reviewing the materializer and
 its tests.
 
+A published `npm-shrinkwrap.json` is an alternative for npm 11 consumers, with a smaller archive and no dependency-copying step. However, [npm 12 ignores published shrinkwraps and recommends `bundleDependencies`](https://github.com/npm/cli/blob/latest/docs/lib/content/configuring-npm/package-lock-json.md#npm-shrinkwrapjson). Bundling also permits installation of the tested dependency bytes from an empty cache without network access. The larger archive and materializer are the trade-off.
+
 Installed Docker tests disable network access during npm installation and use an
 empty cache. This ensures consumers receive the runtime dependency bytes that
 were reviewed and tested, without resolving new transitive versions. Dependency
