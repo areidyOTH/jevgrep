@@ -16,7 +16,7 @@ const build = await Bun.build({
   target: "node",
   format: "esm",
   metafile: true,
-  external: ["pyodide", "typescript"],
+  external: Object.keys(metadata.dependencies),
 });
 if (!build.success) throw new AggregateError(build.logs, "CLI build failed");
 await chmod(join(out, "bin/index.js"), 0o755);

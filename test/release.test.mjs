@@ -144,6 +144,32 @@ test("archive validation rejects changed skill bytes and accidental source paylo
   await pack();
   assert.equal((await validateRelease(tarball, "v1.2.3", root)).version, "1.2.3");
   await writeFile(join(pkg, "package.json"), JSON.stringify(metadata));
+  // A newly authored (including scoped) runtime dependency is allowed without
+  // updating a parser-specific archive path list; unrelated payloads are not.
+  const expanded = {
+    ...metadata,
+    dependencies: { ...metadata.dependencies, "@fixture/parser": "1.0.0" },
+    bundleDependencies: [...metadata.bundleDependencies, "@fixture/parser"],
+  };
+  await writeFile(join(root, "apps/cli/package.json"), JSON.stringify(expanded));
+  await writeFile(join(pkg, "package.json"), JSON.stringify(expanded));
+  await mkdir(join(pkg, "node_modules/@fixture/parser"), { recursive: true });
+  await writeFile(
+    join(pkg, "node_modules/@fixture/parser/package.json"),
+    JSON.stringify({ name: "@fixture/parser", version: "1.0.0" }),
+  );
+  await pack();
+  assert.equal((await validateRelease(tarball, "v1.2.3", root)).version, "1.2.3");
+  await mkdir(join(pkg, "node_modules/@fixture/parser-extra"));
+  await writeFile(join(pkg, "node_modules/@fixture/parser-extra/leak.txt"), "not a dependency");
+  await pack();
+  await assert.rejects(validateRelease(tarball, "v1.2.3", root), /Unexpected published file/);
+  await rm(join(pkg, "node_modules/@fixture/parser-extra"), { recursive: true });
+  await writeFile(join(root, "apps/cli/package.json"), JSON.stringify(metadata));
+  await pack();
+  await assert.rejects(validateRelease(tarball, "v1.2.3", root), /Packed runtime dependencies/);
+  await writeFile(join(pkg, "package.json"), JSON.stringify(metadata));
+  await rm(join(pkg, "node_modules/@fixture"), { recursive: true });
   await writeFile(
     join(pkg, "node_modules/typescript/package.json"),
     JSON.stringify({ name: "typescript", version: "0.0.1" }),
