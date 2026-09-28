@@ -49,3 +49,11 @@ credentials are synthetic, and local commands must make no Gateway requests.
 This bounded smoke complements the Docker suites; filesystem-policy tests still
 run only in their isolated Docker environment. npm installation needs network
 access to resolve the exact runtime dependencies; search uses only loopback HTTP.
+
+## Test images
+
+Docker base images are pinned by multi-platform manifest digest in the test
+Dockerfiles. Update the tag and digest together after reviewing the upstream
+image, then run the source and installed suites before merging. Pins need regular
+review to receive security updates. Apt packages fetched during the source-test
+image build are not frozen by these base-image pins.
