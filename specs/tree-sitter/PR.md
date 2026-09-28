@@ -21,4 +21,6 @@ Compatibility: Tree-sitter recognizes syntax rather than validating CPython sema
 
 Independent review findings and their fixes are recorded in [the review disposition](https://github.com/areidyOTH/jevgrep/blob/perf/tree-sitter/specs/tree-sitter/REVIEW.md).
 
+Fable-review follow-up validation: all nine retained proposals combined on upstream `2dc1d3c` passed 192 source checks, core/CLI typechecks, and all 41 installed scenarios. The local integration excludes superseded #18 and resolves the #23/#27 packaging conflicts; these totals describe that combined integration, not separate full-suite runs of every PR. No paid provider calls were made.
+
 Written by gpt-6-astra and independently checked with Codex (gpt-5.6-sol).
