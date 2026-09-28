@@ -21,11 +21,13 @@ project dependencies, or executing package scripts. Only that job can request
 an OIDC token. Hash verification preserves the tested bytes; it cannot detect
 malicious code already present in the build inputs.
 
-Before enabling this workflow, a maintainer must configure an npm trusted
+Before merging this workflow, a maintainer must configure an npm trusted
 publisher for `@dzhng/jevgrep`: GitHub owner `dzhng`, repository `jevgrep`, workflow
 `publish.yml`, environment `npm-release`. In [Allowed actions](https://docs.npmjs.com/trusted-publishers/#for-github-actions),
 permit direct publication with `npm publish`; this workflow does not use staged publication.
-Create that GitHub environment with required reviewers and restrict deployment
+Create that GitHub environment before merging: a missing environment can be
+created automatically without protection on its first use. Configure required
+reviewers and restrict deployment
 to release tags; protect creation of those tags with repository rules. The build
 job must never reference this environment. A reviewer should inspect the tag,
 workflow changes, and build evidence before approving a release.
