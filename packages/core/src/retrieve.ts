@@ -167,6 +167,8 @@ export async function retrieve(input: SearchInput, evaluator: Evaluator): Promis
         batch.push(item);
       }
       if (batch.length) await submit(batch);
+    } catch (error) {
+      failure ??= { error };
     } finally {
       while (active.size) await Promise.all(active);
     }

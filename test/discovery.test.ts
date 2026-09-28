@@ -455,3 +455,58 @@ testIfDocker(
     }
   },
 );
+
+testIfDocker(
+  "source-generator errors stop split retries and drain active evaluations",
+  async () => {
+    const root = await mkdtemp(join(tmpdir(), "jg-generator-error-"));
+    const source = await import("../packages/core/src/source");
+    const { spyOn } = await import("bun:test");
+    const failure = new Error("fixture preview failure");
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    let active = 0;
+    let callsAtFailure = 0;
+    let preview;
+    try {
+      for (let index = 0; index < 200; index++)
+        await writeFile(join(root, `a${String(index).padStart(3, "0")}.txt`), `entry ${index}\n`);
+      await writeFile(join(root, "z.py"), "def f():\n    return 1\n".repeat(4000));
+      preview = spyOn(source, "pythonPreview").mockImplementation(async () => {
+        callsAtFailure = calls;
+        // Let the generator exception reach score() before admitted requests fail.
+        setTimeout(release, 0);
+        throw failure;
+      });
+      await expect(
+        retrieve(
+          { root, query, signal: new AbortController().signal },
+          {
+            requests: 0,
+            async evaluate() {
+              calls++;
+              active++;
+              try {
+                await gate;
+                throw new EvaluationFailure("provider", true);
+              } finally {
+                active--;
+              }
+            },
+          },
+        ),
+      ).rejects.toBe(failure);
+      expect(callsAtFailure).toBeGreaterThan(0);
+      expect(calls).toBe(callsAtFailure);
+      expect(active).toBe(0);
+    } finally {
+      release();
+      preview?.mockRestore();
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+  30000,
+);
