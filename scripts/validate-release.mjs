@@ -52,7 +52,11 @@ export async function validateRelease(tarball, tag, root = repository) {
         path,
       )
     )
-      throw new Error(`Unexpected published file: ${path}`);
+      if (
+        !/^package\/node_modules\/(?:pyodide|typescript)\//.test(path) ||
+        path.split("/").some((part) => part === ".." || part === "." || !part)
+      )
+        throw new Error(`Unexpected published file: ${path}`);
   const listing = await execute("tar", ["-tvzf", tarball], { maxBuffer: 8_000_000 });
   if (listing.stdout.split("\n").some((line) => line && !["-", "d"].includes(line[0])))
     throw new Error("Release archive cannot contain links or special files");
@@ -70,6 +74,16 @@ export async function validateRelease(tarball, tag, root = repository) {
   const authored = JSON.parse(await readFile(resolve(root, "apps/cli/package.json"), "utf8"));
   if (JSON.stringify(releaseIdentity(authored, tag)) !== JSON.stringify(identity))
     throw new Error("Packed identity differs from authored CLI metadata");
+  if (
+    JSON.stringify([...(metadata.bundleDependencies ?? [])].sort()) !==
+    JSON.stringify(Object.keys(metadata.dependencies).sort())
+  )
+    throw new Error("Every runtime dependency must be bundled");
+  for (const [name, version] of Object.entries(metadata.dependencies)) {
+    const bundled = JSON.parse((await extract(`node_modules/${name}/package.json`)).toString());
+    if (bundled.name !== name || bundled.version !== version)
+      throw new Error(`Bundled runtime dependency ${name} differs from release metadata`);
+  }
   const binary = (await extract("dist/bin/index.js")).toString();
   if (!binary.startsWith("#!/usr/bin/env node\n"))
     throw new Error("Packed executable must run in Node");
