@@ -34,3 +34,20 @@ Parenthesized local base names now resolve like their unparenthesized forms.
 `bun run dev` prepares grammar assets before running source, verified with the
 generated assets deleted in a disposable container. These changes affect call
 inference and source setup, not the inspection benchmark's operation.
+
+
+Opus 5.5 reviewed `d74d3da` and recommended keeping the PR. Its additional
+read-only probes matched inspection and inherited-call output on 135 Python
+stdlib modules. Preview and neighbourhood each matched 134/135; preview differs
+at a decorated first class member, and neighbourhood differs only in range
+ordering. These are compatibility differences, not universal helper parity.
+The reviewer reported no exceptions across 9,600 mutated-Python helper calls
+and 621 real Go/Rust files; about 99% of the latter parsed structurally.
+These probes used host Python 3.14 as the oracle and did not replace the Docker
+release gates. A two-trial cold-start check supported the earlier result;
+it does not establish general warm speedup or search recall.
+
+Document the class-header difference rather than changing its cleaner boundary.
+Do not add a blanket catch around helper logic without a triggering input:
+that would hide implementation defects. Missing assets must continue to fail
+visibly. No production-code changes result from this review.
