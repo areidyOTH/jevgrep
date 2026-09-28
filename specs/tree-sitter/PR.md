@@ -4,6 +4,8 @@ Replace the Pyodide interpreter with `web-tree-sitter` and pinned official Pytho
 
 Go and Rust gain named declaration selection and declaration indexes in large-file role previews. Python retains query previews, structural neighbours and inherited-method reading leads; those extra analyses remain Python-specific. This adds two languages, not automatic support for every Tree-sitter grammar.
 
+Go/Rust trade-off: their candidates now use the serial parser worker instead of plain-text splitting. In three fresh-process Rust trials, 1,500 functions took 618 ms cold / 65 ms warm versus 423 ms / 1.9 ms for the old text fallback, with about 106 MiB worker RSS (100 functions: 70 MiB). Every expected function name and exact source slice passed. This establishes richer structure, not improved search recall or a speedup over text chunking. C still uses plain-text fallback. [Raw results and reproduction scripts](https://github.com/areidyOTH/jevgrep/tree/perf/tree-sitter/specs/tree-sitter/c-rust).
+
 Five paired fresh-process trials against upstream `2dc1d3c`, with identical output hashes:
 
 | Python fixture | Cold inspection before → after | Warm inspection before → after |
