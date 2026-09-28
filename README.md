@@ -65,7 +65,9 @@ jg --version
 ```
 
 After updating the CLI, refresh the installed skill by rerunning `jg skill`. Updating the npm package does not
-overwrite skill files in your projects. See the [package guide](apps/cli/README.md)
+overwrite skill files in your projects. The installer records a machine-specific local
+path in `skills-lock.json`; `skills update` skips this entry. Rerun `jg skill` on
+another machine or after changing your Node installation. See the [package guide](apps/cli/README.md)
 for authentication details.
 
 ## Start with a question, leave with source
