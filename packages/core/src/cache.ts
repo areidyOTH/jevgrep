@@ -253,7 +253,10 @@ export function createEvaluationCache(options: CacheOptions) {
       // Charging the full payload overestimates replacements, keeping local writes
       // bounded without retaining an entry index. Cross-process bounds are best effort.
       if (maintenance) maintenance.bytes += Buffer.byteLength(payload);
-      if (!maintenance || maintenance.bytes > maxBytes) {
+      if (!maintenance) {
+        // An incomplete census does not establish budget pressure.
+        await reconcile();
+      } else if (maintenance.bytes > maxBytes) {
         // Evict below the limit so a saturated cache does not rescan on every write.
         await reconcile(Math.floor(maxBytes * 0.9));
       } else {

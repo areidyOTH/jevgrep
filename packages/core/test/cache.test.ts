@@ -305,3 +305,31 @@ test("eviction headroom still permits one entry as large as the cache budget", a
   await cache.put(input, { question1: 0.5 });
   expect(await cache.get(input)).toEqual({ question1: 0.5 });
 });
+
+test("incomplete censuses do not evict below the budget", async () => {
+  const dir = await directory();
+  const now = () => 1000;
+  const answers = { question1: 0.5 };
+  const bytes = Buffer.byteLength(JSON.stringify({ schema: 1, createdAt: now(), answers }));
+  const cache = createEvaluationCache({ directory: dir, maxBytes: bytes * 100, now });
+  for (let index = 0; index < 95; index++)
+    await cache.put({ ...input, request: { index } }, answers);
+  const names = await readdir(join(dir, "entries"));
+  const broken = join(dir, "entries", names[0]!);
+  const original = fs.lstat;
+  const probe = spyOn(fs, "lstat").mockImplementation((...args) => {
+    if (String(args[0]) === broken)
+      return Promise.reject(Object.assign(new Error("fixture I/O failure"), { code: "EIO" }));
+    return original(...args);
+  });
+  try {
+    const fresh = createEvaluationCache({ directory: dir, maxBytes: bytes * 100, now });
+    await fresh.put({ ...input, request: { index: 95 } }, answers);
+    const remaining = await readdir(join(dir, "entries"));
+    expect(remaining.length).toBe(96);
+    for (const name of names) expect(remaining).toContain(name);
+    expect(fresh.stats().issues.some((issue) => issue.kind === "cache_unavailable")).toBe(true);
+  } finally {
+    probe.mockRestore();
+  }
+});
