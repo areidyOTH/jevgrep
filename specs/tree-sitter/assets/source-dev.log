@@ -1,0 +1,47 @@
+$ bun scripts/parser-assets.mjs && bun apps/cli/src/index.ts --help
+TAP version 13
+# Subtest: Go declarations retain names and original Unicode source bytes
+ok 1 - Go declarations retain names and original Unicode source bytes
+  ---
+  duration_ms: 76.949525
+  type: 'test'
+  ...
+# Subtest: Rust impl methods retain owner context, attributes and CRLF byte spans
+ok 2 - Rust impl methods retain owner context, attributes and CRLF byte spans
+  ---
+  duration_ms: 8.21695
+  type: 'test'
+  ...
+# Subtest: Go methods and Rust trait/module functions expose structural names
+ok 3 - Go methods and Rust trait/module functions expose structural names
+  ---
+  duration_ms: 3.23113
+  type: 'test'
+  ...
+# Subtest: invalid Go/Rust and parse-size limits fall back without dropping UTF-8 bytes
+ok 4 - invalid Go/Rust and parse-size limits fall back without dropping UTF-8 bytes
+  ---
+  duration_ms: 3.258854
+  type: 'test'
+  ...
+# Subtest: Go variables/constants and Rust foreign declarations keep their symbol names
+ok 5 - Go variables/constants and Rust foreign declarations keep their symbol names
+  ---
+  duration_ms: 3.110032
+  type: 'test'
+  ...
+# Subtest: non-Python declaration names are not NFKC-normalized
+ok 6 - non-Python declaration names are not NFKC-normalized
+  ---
+  duration_ms: 2.195315
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 675.133062

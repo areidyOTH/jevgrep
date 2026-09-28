@@ -974,15 +974,14 @@ test("source budget preserves every file and lead while explicitly omitting sour
   assertCachedRequestsAreReused(fixture.requests, before);
 });
 
-test("missing or corrupt packaged Python assets fail closed without downloads", async (t) => {
+test("missing or corrupt packaged parser assets fail closed without downloads", async (t) => {
   const scratch = await mkdtemp(join(tmpdir(), "jg-missing-python-"));
   t.after(() => rm(scratch, { recursive: true, force: true }));
   for (const [asset, corrupt] of [
-    ["dist/bin/python-worker.mjs", false],
-    ["dist/assets/python/inspect.py", false],
-    ["node_modules/pyodide/pyodide.asm.wasm", false],
-    ["node_modules/pyodide/python_stdlib.zip", false],
-    ["node_modules/pyodide/pyodide.asm.wasm", true],
+    ["dist/bin/parser-worker.mjs", false],
+    ["dist/assets/tree-sitter/tree-sitter-python.wasm", false],
+    ["node_modules/web-tree-sitter/web-tree-sitter.wasm", false],
+    ["dist/assets/tree-sitter/tree-sitter-python.wasm", true],
   ]) {
     const copy = join(scratch, "package");
     await cp(packageDirectory, copy, { recursive: true, dereference: true });
@@ -1240,4 +1239,57 @@ test("installed invalid auth preserves saved bytes and leaves no temporary crede
     assert.deepEqual(await readdir(fixture.credentialDirectory), ["credentials.json"]);
   }
   assert.equal(fixture.requests.length, 0);
+});
+
+test("installed search extracts named Go and Rust methods without Python or native compiler", async (t) => {
+  const fixture = await context(t, async ({ body, response }) => {
+    const probabilities = Object.fromEntries(
+      Object.keys(body.questions).map((id) => [
+        id,
+        { type: "noul", noul: id.startsWith("ref") ? 0.05 : 0.95 },
+      ]),
+    );
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ answers: probabilities }));
+    return true;
+  });
+  const files = [
+    [
+      "sample.go",
+      'package sample\ntype Box struct {}\nfunc (b *Box) record_event() string { return "go-evidence" }\n',
+      "Box.record_event",
+    ],
+    [
+      "sample.rs",
+      'struct Box {}\nimpl Box {\n pub fn record_event(&self) -> &str { "rust-evidence" }\n}\n',
+      "Box.record_event",
+    ],
+  ];
+  for (const [path, source] of files)
+    await writeFile(join(fixture.tree, path), source + "// padding\n".repeat(2000));
+  const result = await fixture.run([query, fixture.tree, "--no-cache"]);
+  assert.equal(result.code, 0, result.stdout);
+  assert.match(result.stdout, /^Jevgrep: 6 relevant files/);
+  for (const [path, , name] of files) {
+    assert.ok(
+      fixture.requests.some(
+        ({ body }) =>
+          body.state.path === path &&
+          body.state.declarations?.some(
+            (d) => d.name === name && d.startLine === 3 && d.endLine === 3,
+          ),
+      ),
+      path,
+    );
+    assert.ok(
+      fixture.requests.some(
+        ({ body }) =>
+          body.state.path === path &&
+          body.state.preview?.truncated &&
+          body.state.preview.declarations?.some((d) => d.name === name),
+      ),
+      `Missing declaration index in ${path} role preview`,
+    );
+    assert.ok(result.stdout.includes(path), result.stdout);
+  }
 });

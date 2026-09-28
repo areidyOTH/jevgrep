@@ -102,7 +102,7 @@ test("TS/JS uses original source coordinates, comments, and decorator-bearing me
   ]);
 });
 
-test("syntax outside reference Python 3.11 falls back across inspection, preview and neighbors", async () => {
+test("unsupported Python 2 syntax falls back across inspection, preview and neighbors", async () => {
   const { pythonNeighborhood, pythonPreview, sourceForUnit } =
     await import("../../packages/core/src/source.ts");
   for (const source of [
@@ -121,14 +121,6 @@ test("syntax outside reference Python 3.11 falls back across inspection, preview
     "def target((first, second)):\n    return first\n",
     "def target((first, second)=(1, 2)):\n    return first\n",
     "value = lambda (first, second): first\n",
-    "type Alias = int\n",
-    "def target[T](value: T):\n    return value\n",
-    'value = f"{mapping["key"]}"\n',
-    "value = f\"{'\\n'}\"\n",
-    'value = f"""{value # comment\n}"""\n',
-    'value = f"{(value +\n other)}"\n',
-    "value = f'{1:{mapping['width']}}'\n",
-    "value = f'{1:{\"\\n\"}}'\n",
   ]) {
     const snapshot = {
       path: "old.py",
@@ -155,6 +147,14 @@ test("syntax outside reference Python 3.11 falls back across inspection, preview
 
 test("Python 3 equivalents and Python 2-looking strings remain parsed", async () => {
   for (const source of [
+    "type Alias = int\n",
+    "def target[T](value: T):\n    return value\n",
+    'value = f"{mapping["key"]}"\n',
+    "value = f\"{'\\n'}\"\n",
+    'value = f"""{value # comment\n}"""\n',
+    'value = f"{(value +\n other)}"\n',
+    "value = f'{1:{mapping['width']}}'\n",
+    "value = f'{1:{\"\\n\"}}'\n",
     'print("old")\n',
     "print >> stream, value\n",
     "print +1\nprint [1,2]\n",

@@ -1,0 +1,17 @@
+
+  ! eslint(no-control-regex): Unexpected control characters
+     ,-[packages/core/src/filesystem.ts:365:11]
+ 364 |     if (!same(admitted.stat, current.stat)) return issue("changed", admitted.path);
+ 365 |     if (/[\x00-\x08\x0b\x0e-\x1f\x7f]/.test(read.bytes.toString("latin1")))
+     :           ^^|^ ^^|^^^|^^^|^ ^^|^
+     :             |    |   |   |    `-- 'U+001F' is a control character.
+     :             |    |   |   `-- 'U+000E' is a control character.
+     :             |    |   `-- 'U+000B' is a control character.
+     :             |    `-- 'U+0008' is a control character.
+     :             `-- 'U+0000' is a control character.
+ 366 |       return excluded("binary");
+     `----
+  help: Avoid matching control characters in regular expressions. If intentional, consider using a Unicode escape instead.
+
+Found 1 warning and 0 errors.
+Finished in 78ms on 24 files with 95 rules using 8 threads.

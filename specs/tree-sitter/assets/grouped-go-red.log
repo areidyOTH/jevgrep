@@ -1,0 +1,30 @@
+✔ Go declarations retain names and original Unicode source bytes (80.92051ms)
+✔ Rust impl methods retain owner context, attributes and CRLF byte spans (7.561526ms)
+✔ Go methods and Rust trait/module functions expose structural names (2.450227ms)
+✔ invalid Go/Rust and parse-size limits fall back without dropping UTF-8 bytes (2.486366ms)
+✖ Go variables/constants and Rust foreign declarations keep their symbol names (2.071924ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 476.418492
+
+✖ failing tests:
+
+test at test/parser/languages.test.ts:74:1
+✖ Go variables/constants and Rust foreign declarations keep their symbol names (2.071924ms)
+  AssertionError [ERR_ASSERTION]: Grouped
+      at TestContext.<anonymous> (file:///mnt/490318B059091CC2/jevgrep_wt/tree-sitter/test/parser/languages.test.ts:85:14)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

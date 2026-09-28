@@ -18,7 +18,7 @@ A failed judgment must not erase previously obtained evidence.
 
 Source selection and presentation are separate. Declaration units, comments,
 structural class headers and bounded local-call context preserve meaning without
-requiring complete files in the initial output. Parsing supports Python and
+requiring complete files in the initial output. Parsing supports Python, Go, Rust and
 TypeScript/JavaScript; other or invalid text falls back to bounded source chunks.
 Source ranges always refer to the same immutable snapshot used for classification.
 
@@ -60,3 +60,17 @@ any skill changes. Historical spike parity is not a release requirement.
 Product tests cover behavior, source accuracy, provider failures, eligibility and
 packaged CLI execution. They do not require old spike prompts, source bytes,
 heuristics or output formatting to remain unchanged.
+
+Python, Go and Rust use locally packaged Tree-sitter WASM grammars in a cancellable
+worker. TypeScript/JavaScript retain the TypeScript compiler parser. Python query
+previews, neighbourhoods and inherited-method leads use the same syntax tree
+representation; Go and Rust currently add declaration boundaries, not those
+Python-specific analyses. Other eligible text remains searchable through chunks.
+
+Tree-sitter recognizes syntax rather than checking CPython AST validity. Modern
+Python type parameters and f-string syntax are supported; some semantically
+invalid programs can still produce structural ranges. Error-containing trees
+fall back to text. Bare-CR Python files also use lossless text fallback: source
+coordinates throughout retrieval are based on LF lines. This parser never executes repository source.
+See [parser checks](../test/parser/README.md) and the
+[replacement measurements](../specs/tree-sitter/RESULTS.md).
