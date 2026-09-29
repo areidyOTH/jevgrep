@@ -91,7 +91,7 @@ function validPython(root) {
       n.namedChildren.some(
         (c) =>
           !["identifier", "attribute", "subscript", "expression_list", "tuple", "list"].includes(
-            c.type,
+            unparenthesized(c).type,
           ),
       )
     )

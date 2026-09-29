@@ -13,7 +13,8 @@ parentheses that CPython's AST removes, and a multiline call must be associated
 with the range containing its opening line. Both now have regression tests that
 failed before the fix. Parenthesis handling is shared across the syntax consumers. Comments are
 excluded from expression children, base classes, and concatenated-string checks;
-regressions cover commented receivers, byte strings, and docstrings.
+regressions cover commented receivers, byte strings, and docstrings. Valid
+parenthesized deletion targets use the same expression handling.
 
 Registry verification must prepare canonical grammar assets from locked packages
 before validating the downloaded archive. The release workflow owns that setup.

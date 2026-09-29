@@ -34,6 +34,25 @@ test("comments between adjacent byte strings preserve structural source selectio
   assert.equal(sourceForUnit(snapshot, result.units[0]!), source);
 });
 
+test("parenthesized deletion targets preserve Python declaration ranges", async () => {
+  for (const target of [
+    "(self.cached)",
+    "(\n            # target\n            self.cached\n        )",
+    "((items[0]))",
+  ]) {
+    const source = `def target(self, items):\n    del ${target}\n`;
+    const snapshot = { path: "sample.py", contentHash: "fixture", source };
+    const result = await inspect(snapshot);
+    assert.equal(result.mode, "python");
+    assert.deepEqual(
+      result.units.map(({ name, range }) => ({ name, ...range })),
+      [{ name: "target", startLine: 1, endLine: source.trimEnd().split("\n").length }],
+    );
+    const { sourceForUnit } = await import("../../packages/core/src/source.ts");
+    assert.equal(sourceForUnit(snapshot, result.units[0]!), source);
+  }
+});
+
 test("syntax errors and unsupported source fall back without losing source lines", async () => {
   for (const [path, source, reason] of [
     ["bad.py", "def broken(:\n  return 2\n", "syntax"],
