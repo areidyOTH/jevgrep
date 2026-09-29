@@ -1,8 +1,7 @@
 # Parser behavior
 
 Tests cover original source coordinates, Unicode boundaries, declaration owners,
-syntax fallback and cancellation through the production inspection API. Go/Rust
-coverage asserts named declarations rather than generic text extraction.
+syntax fallback and cancellation through the production inspection API. Unsupported languages retain lossless text fallback.
 
 Python helpers in `reference/` are frozen test-only oracles from the replaced
 runtime. Differential fixtures compare declaration, preview, neighbourhood and
@@ -20,3 +19,7 @@ build copies pinned official grammar WASM into the generated assets directory.
 `bun run test:parser` does this in Docker and checks the installed package too.
 Missing/corrupt parser assets are setup errors, never silently downloaded or
 misrepresented as malformed user source.
+
+Inherited-call tests preserve useful reading leads when a receiver or callee is
+parenthesized, or a selected excerpt contains only a multiline call’s opening
+line. They assert returned locations rather than the grammar’s node shape.

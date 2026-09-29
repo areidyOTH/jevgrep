@@ -21,6 +21,19 @@ test("Python preserves decorators, class context and nested declarations", async
   assert.deepEqual(result.comments, [{ startLine: 1, endLine: 1 }]);
 });
 
+test("comments between adjacent byte strings preserve structural source selection", async () => {
+  const source = "def target():\n    return (b'a' # comment\n            b'b')\n";
+  const snapshot = { path: "sample.py", contentHash: "fixture", source };
+  const result = await inspect(snapshot);
+  assert.equal(result.mode, "python");
+  assert.deepEqual(
+    result.units.map(({ name, range }) => ({ name, ...range })),
+    [{ name: "target", startLine: 1, endLine: 3 }],
+  );
+  const { sourceForUnit } = await import("../../packages/core/src/source.ts");
+  assert.equal(sourceForUnit(snapshot, result.units[0]!), source);
+});
+
 test("syntax errors and unsupported source fall back without losing source lines", async () => {
   for (const [path, source, reason] of [
     ["bad.py", "def broken(:\n  return 2\n", "syntax"],

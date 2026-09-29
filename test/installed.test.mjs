@@ -499,7 +499,9 @@ test("actual installed search parses Python and returns every relevant hierarchy
 test("search concurrency limits all stages against a busy provider", async (t) => {
   let active = 0;
   let peak = 0;
-  const fixture = await context(t, async ({ response }) => {
+  const pending = [];
+  let initialSelectionArrivals = 0;
+  const fixture = await context(t, async ({ body, response }) => {
     active++;
     peak = Math.max(peak, active);
     response.once("finish", () => active--);
@@ -508,7 +510,19 @@ test("search concurrency limits all stages against a busy provider", async (t) =
       response.end(JSON.stringify({ error: "Too many concurrent calls" }));
       return true;
     }
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    if (Array.isArray(body.state.declarations) && !body.state.selectedEvidence) {
+      initialSelectionArrivals++;
+      if (initialSelectionArrivals <= 2) {
+        await new Promise((resolve) => {
+          const deadline = setTimeout(resolve, 5000);
+          pending.push(() => {
+            clearTimeout(deadline);
+            resolve();
+          });
+          if (pending.length === 2) pending.forEach((release) => release());
+        });
+      }
+    }
     return false;
   });
   complete(await fixture.run([query, fixture.tree, "--concurrency", "2", "--no-cache"]));
@@ -1048,7 +1062,7 @@ test("installed queued freshness withholds excluded source uploads", async (t) =
         await new Promise((resolve) => {
           releases.push(resolve);
           if (releases.length === 8)
-            void writeFile(join(tree, ".ignore"), "large.txt\n").then(() =>
+            void writeFile(join(tree, ".ignore"), "large-*.txt\n").then(() =>
               releases.forEach((release) => release()),
             );
         });
@@ -1066,10 +1080,11 @@ test("installed queued freshness withholds excluded source uploads", async (t) =
   t.after(() => releases.forEach((release) => release()));
   await rm(fixture.tree, { recursive: true });
   await mkdir(fixture.tree);
-  await writeFile(
-    join(fixture.tree, "large.txt"),
-    "QUEUED_INSTALLED_SENTINEL line\n".repeat(18000),
-  );
+  for (let index = 0; index < 48; index++)
+    await writeFile(
+      join(fixture.tree, `large-${index}.txt`),
+      "QUEUED_INSTALLED_SENTINEL line\n".repeat(800),
+    );
   // Fill every provider slot before changing the policy, leaving later uploads queued.
   const result = await fixture.run([query, fixture.tree, "--concurrency", "8", "--no-cache"]);
   assert.equal(uploads, 8);
@@ -1239,57 +1254,4 @@ test("installed invalid auth preserves saved bytes and leaves no temporary crede
     assert.deepEqual(await readdir(fixture.credentialDirectory), ["credentials.json"]);
   }
   assert.equal(fixture.requests.length, 0);
-});
-
-test("installed search extracts named Go and Rust methods without Python or native compiler", async (t) => {
-  const fixture = await context(t, async ({ body, response }) => {
-    const probabilities = Object.fromEntries(
-      Object.keys(body.questions).map((id) => [
-        id,
-        { type: "noul", noul: id.startsWith("ref") ? 0.05 : 0.95 },
-      ]),
-    );
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({ answers: probabilities }));
-    return true;
-  });
-  const files = [
-    [
-      "sample.go",
-      'package sample\ntype Box struct {}\nfunc (b *Box) record_event() string { return "go-evidence" }\n',
-      "Box.record_event",
-    ],
-    [
-      "sample.rs",
-      'struct Box {}\nimpl Box {\n pub fn record_event(&self) -> &str { "rust-evidence" }\n}\n',
-      "Box.record_event",
-    ],
-  ];
-  for (const [path, source] of files)
-    await writeFile(join(fixture.tree, path), source + "// padding\n".repeat(2000));
-  const result = await fixture.run([query, fixture.tree, "--no-cache"]);
-  assert.equal(result.code, 0, result.stdout);
-  assert.match(result.stdout, /^Jevgrep: 6 relevant files/);
-  for (const [path, , name] of files) {
-    assert.ok(
-      fixture.requests.some(
-        ({ body }) =>
-          body.state.path === path &&
-          body.state.declarations?.some(
-            (d) => d.name === name && d.startLine === 3 && d.endLine === 3,
-          ),
-      ),
-      path,
-    );
-    assert.ok(
-      fixture.requests.some(
-        ({ body }) =>
-          body.state.path === path &&
-          body.state.preview?.truncated &&
-          body.state.preview.declarations?.some((d) => d.name === name),
-      ),
-      `Missing declaration index in ${path} role preview`,
-    );
-    assert.ok(result.stdout.includes(path), result.stdout);
-  }
 });

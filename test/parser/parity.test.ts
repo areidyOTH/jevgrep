@@ -14,6 +14,9 @@ const reference = (helper: string, input: string) => {
 };
 test("Python declaration, preview, neighborhood and inherited-call outputs match the frozen helpers", async () => {
   const sources = [
+    'def target():\n    ("' +
+      "long docs ".repeat(100) +
+      '" # comment\n     "rest")\n    return "implementation"\n',
     '@decorator\nclass Café:\n    """doc"""\n    @property\n    def first(self):\n        return "🙂"\n    def second(self):\n        return 2\n',
     'class Root:\n    def helper(self):\n        return "🙂"\nclass Child(Root):\n    def target(self):\n        return self.helper()\n',
     'class Root:\n    def helper(self): pass\nclass Child(Unknown, Root):\n    def target(self: "Child"):\n        return self.helper()\n',

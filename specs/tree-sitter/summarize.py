@@ -86,9 +86,11 @@ recorded trials. The initial implementation improved startup but regressed warm
 inspection; syntax-node filtering was revised before final confirmation.
 See [review disposition](REVIEW.md) and [validation](VALIDATION.md).
 
-Limits: synthetic inspection fixtures; no paid/live-provider evaluation, macOS,
+These measurements precede the final Python-only scope and call-context fixes.
+[Final validation](VALIDATION.md) records the integrated candidate separately.
+
+Limits of this cohort: synthetic inspection fixtures; no paid/live-provider evaluation, macOS,
 ARM, full repository search-latency benchmark, or integration with the separate
-unsubmitted calibration/parsed-reuse branches. Packaging changes overlap the
-previous runtime-bundling PR and will need rebasing if that lands first.
+unsubmitted calibration/parsed-reuse branches. This cohort is historical evidence rather than a timing guarantee for the final merge.
 '''
 (root/'RESULTS.md').write_text(text)

@@ -34,23 +34,6 @@ also fluctuates. Treat warm differences as noisy, not a general speedup.
 Worker RSS is a Linux `/proc` snapshot after the repeated inspections, not peak
 whole-search memory. Parent peak RSS is retained in the raw data separately.
 
-## Language support and correctness
-
-Python uses Tree-sitter; TypeScript/JavaScript retain their compiler parser.
-Go and Rust now provide named declarations. Tests cover Go functions, receivers,
-types, variables, constants and grouped specs; Rust functions, impls, traits,
-modules, attributes and foreign declarations. Installed tests assert that large
-Go/Rust files send named declarations in role previews and selection requests,
-and return their locations. This proves structural coverage, not language-server
-semantics, provider accuracy or support for every Tree-sitter grammar.
-
-Python-specific preview, neighbourhood and inherited-call analyses remain
-Python-specific. Frozen test-only Python helpers check compatible outputs.
-Modern Python syntax is accepted; Tree-sitter is not a CPython semantic validator.
-Bare-CR Python uses lossless text fallback; LF and CRLF structural parsing work.
-Missing/corrupt packaged assets fail closed; no runtime parser downloads, Python
-installation, native compiler or repository-source execution is required.
-
 ## Reproduction and evidence
 
 Create a separate clean checkout at `2dc1d3c`, then from this branch run:
@@ -72,11 +55,9 @@ recorded trials. The initial implementation improved startup but regressed warm
 inspection; syntax-node filtering was revised before final confirmation.
 See [review disposition](REVIEW.md) and [validation](VALIDATION.md).
 
-Limits: synthetic inspection fixtures; no paid/live-provider evaluation, macOS,
+These measurements precede the final Python-only scope and call-context fixes.
+[Final validation](VALIDATION.md) records the integrated candidate separately.
+
+Limits of this cohort: synthetic inspection fixtures; no paid/live-provider evaluation, macOS,
 ARM, full repository search-latency benchmark, or integration with the separate
-unsubmitted calibration/parsed-reuse branches. Packaging changes overlap the
-previous runtime-bundling PR and will need rebasing if that lands first.
-
-## Go/Rust scope and cost
-
-Go and Rust gain structural parsing through the serial parser worker, where the old version only split text. This is added work, not a parsing speedup over that fallback. In the [Rust/C follow-up](c-rust/RESULTS.md), 1,500 Rust functions took 65.17 ms warm versus 1.94 ms for text splitting; worker RSS was 105.9 MiB. All function names and exact source slices passed. C remains plain-text fallback. These fixtures do not measure search recall.
+unsubmitted calibration/parsed-reuse branches. This cohort is historical evidence rather than a timing guarantee for the final merge.

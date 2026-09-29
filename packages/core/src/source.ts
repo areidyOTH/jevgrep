@@ -15,7 +15,7 @@ export type SourceUnit = {
 export type Inspection = {
   units: SourceUnit[];
   comments: Range[];
-  mode: "python" | "typescript" | "go" | "rust" | "text";
+  mode: "python" | "typescript" | "text";
   fallback?: "unsupported" | "syntax" | "size";
 };
 
@@ -167,16 +167,6 @@ export async function inspect(
     };
     visit(file);
     mode = "typescript";
-  } else if (/\.(go|rs)$/.test(path)) {
-    const parsed = await runParser<{ units: typeof units; comments: Range[] }>(
-      "declarations",
-      JSON.stringify({ source, language: path.endsWith(".go") ? "go" : "rust" }),
-      options.signal,
-    );
-    if (!parsed) return fallback("syntax");
-    units = parsed.units;
-    comments = parsed.comments;
-    mode = path.endsWith(".go") ? "go" : "rust";
   } else return fallback("unsupported");
   comments = [...new Map(comments.map((r) => [`${r.startLine}:${r.endLine}`, r])).values()].sort(
     (a, b) => a.startLine - b.startLine,

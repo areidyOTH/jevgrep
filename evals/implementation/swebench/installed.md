@@ -14,6 +14,11 @@ on an internal network. The benchmark prompt explicitly invokes `$jevgrep`, as r
 the public skill itself teaches CLI usage without prescribing a research workflow. Retrieval limits come
 from the frozen package's default policy.
 
+New preparations use the current canonical `skills/jevgrep/SKILL.md` by default
+and reject a package carrying different skill bytes. Use `--skill` only for an
+explicitly identified comparison; existing frozen plans retain their original
+skill for reproducibility.
+
 The plan binds one package, installed prefix, skill, safe task export, evaluator
 dataset and archived runner/broker/registry sources before any treatment runs.
 Existing studies remain unchanged; their archived source records the procedure used.
@@ -31,8 +36,9 @@ python3 evals/implementation/swebench/installed.py run \
 Preparation and dry-run make no model calls. `prepare` defaults to all ten tasks;
 `--jev-provider typesafe` selects native Jev for a separately identified provider
 experiment. Sol continues through Gateway. The broker holds both real credentials;
-the agent receives only its scoped broker token. Native Jev billing is unknown
-without Gateway metadata and remains excluded from scored Sol cost.
+the agent receives only its scoped broker token. Native Jev cost is estimated from recorded input usage at the documented
+list price frozen in the runner. Total task cost includes both Sol and Jev.
+Missing usage or incomplete transport coverage leaves that total unknown.
 `--task` selects one registered task. `--evidence-root` locates the retained
 baseline and evaluator files when preparing from another checkout. The root
 `eval:swebench` alias points to this entry point; `--help` lists its arguments.
@@ -106,8 +112,8 @@ Receipts retain work, credited retrieval and wall durations plus the disjoint
 credit intervals and native command IDs, so timing remains auditable.
 
 The recognizer accepts a direct installed `jg` search, including the native shell
-wrapper. It gives no credit to auth, doctor, cache, skill, help/version, compound
-commands, redirections or shell expansions. Ambiguous invocations count as work.
+wrapper. It recognizes search exclusions and gives no credit to files, auth,
+doctor, cache, skill, help/version, compound commands, redirections or shell expansions. Ambiguous invocations count as work.
 Event-observation timestamps measure what the harness sees, not provider execution
 time; malformed timing events invalidate the timing evidence rather than inventing
 credit. Process startup and time outside qualifying waits count toward work.

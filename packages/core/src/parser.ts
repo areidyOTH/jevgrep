@@ -1,6 +1,6 @@
 import { fork, type ChildProcess } from "node:child_process";
 
-type Helper = "inspect" | "preview" | "neighborhood" | "calls" | "declarations";
+type Helper = "inspect" | "preview" | "neighborhood" | "calls";
 type Pending = {
   helper: Helper;
   input: string;
@@ -38,21 +38,18 @@ function start(): Runtime {
     pending: new Map(),
   };
   // Runtime loader diagnostics must not bypass the CLI output contract.
-  owner.worker.on(
-    "message",
-    (message: { id: number; result?: unknown; sourceError?: string; error?: string }) => {
-      const request = owner.pending.get(message.id);
-      if (!request) return;
-      owner.pending.delete(message.id);
-      request.cleanup();
-      if (message.error) request.reject(new Error(`Parser helper failed: ${message.error}`));
-      else request.resolve(message.sourceError ? null : message.result);
-      if (!owner.pending.size) {
-        owner.worker.unref();
-        owner.worker.channel?.unref?.();
-      }
-    },
-  );
+  owner.worker.on("message", (message: { id: number; result?: unknown; error?: string }) => {
+    const request = owner.pending.get(message.id);
+    if (!request) return;
+    owner.pending.delete(message.id);
+    request.cleanup();
+    if (message.error) request.reject(new Error(`Parser helper failed: ${message.error}`));
+    else request.resolve(message.result);
+    if (!owner.pending.size) {
+      owner.worker.unref();
+      owner.worker.channel?.unref?.();
+    }
+  });
   owner.worker.on("error", (error) => stop(owner, error));
   owner.worker.on("exit", (code) => {
     if (runtime === owner) stop(owner, new Error(`Parser worker exited (${code})`));

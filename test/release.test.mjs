@@ -95,25 +95,15 @@ test("archive validation rejects changed skill bytes and accidental source paylo
       ]),
     ),
     "packages/core/package.json": JSON.stringify({
-      devDependencies: Object.fromEntries(
-        ["python", "go", "rust"].map((name) => [`tree-sitter-${name}`, "1.0.0"]),
-      ),
+      devDependencies: { "tree-sitter-python": "1.0.0" },
     }),
-    ...Object.fromEntries(
-      ["python", "go", "rust"].flatMap((name) => [
-        [
-          `packages/core/node_modules/tree-sitter-${name}/package.json`,
-          JSON.stringify({ name: `tree-sitter-${name}`, version: "1.0.0", license: "MIT" }),
-        ],
-        [`packages/core/node_modules/tree-sitter-${name}/LICENSE`, "MIT fixture grammar license"],
-      ]),
-    ),
-    ...Object.fromEntries(
-      ["python", "go", "rust"].map((name) => [
-        `packages/core/assets/tree-sitter/tree-sitter-${name}.wasm`,
-        `# ${name} helper fixture`,
-      ]),
-    ),
+    "packages/core/node_modules/tree-sitter-python/package.json": JSON.stringify({
+      name: "tree-sitter-python",
+      version: "1.0.0",
+      license: "MIT",
+    }),
+    "packages/core/node_modules/tree-sitter-python/LICENSE": "MIT fixture grammar license",
+    "packages/core/assets/tree-sitter/tree-sitter-python.wasm": "Python grammar fixture",
   };
   for (const [path, text] of Object.entries(files)) {
     await mkdir(join(root, path, ".."), { recursive: true });
@@ -132,10 +122,10 @@ test("archive validation rejects changed skill bytes and accidental source paylo
       `packages/core/src/${name}.mjs`,
       `dist/bin/${name}.mjs`,
     ]),
-    ...["python", "go", "rust"].map((name) => [
-      `packages/core/assets/tree-sitter/tree-sitter-${name}.wasm`,
-      `dist/assets/tree-sitter/tree-sitter-${name}.wasm`,
-    ]),
+    [
+      "packages/core/assets/tree-sitter/tree-sitter-python.wasm",
+      "dist/assets/tree-sitter/tree-sitter-python.wasm",
+    ],
   ])
     await cp(join(root, from), join(pkg, to));
   await writeFile(join(pkg, "dist/bin/index.js"), '#!/usr/bin/env node\nconsole.log("jg");\n');
@@ -179,10 +169,9 @@ test("archive validation rejects changed skill bytes and accidental source paylo
   await assert.rejects(validateRelease(tarball, "v1.2.3", root), /Unexpected published file/);
 });
 
-test("grammar notices retain all three official parser licenses", async () => {
+test("grammar notices retain the official Python parser license", async () => {
   const { grammarAssets } = await import("../scripts/parser-assets.mjs");
   const notices = await grammarAssets();
-  for (const name of ["python", "go", "rust"])
-    assert.match(notices, new RegExp(`tree-sitter-${name}@`));
+  assert.match(notices, /tree-sitter-python@/);
   assert.match(notices, /Permission is hereby granted/);
 });

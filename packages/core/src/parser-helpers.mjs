@@ -2,27 +2,21 @@ import { Parser, Language, Query } from "web-tree-sitter";
 import { fileURLToPath } from "node:url";
 import { preview } from "./parser-preview.mjs";
 let initialized;
-const languages = new Map();
-async function parse(source, language, action) {
+let language;
+async function parse(source, action) {
   // Retrieval coordinates count LF lines; normalizing bare CR would mislabel original bytes.
-  if (language === "python" && /\r(?!\n)/.test(source)) return null;
+  if (/\r(?!\n)/.test(source)) return null;
   await (initialized ??= Parser.init());
-  if (!languages.has(language))
-    languages.set(
-      language,
-      await Language.load(
-        fileURLToPath(
-          new URL(`../assets/tree-sitter/tree-sitter-${language}.wasm`, import.meta.url),
-        ),
-      ),
-    );
+  language ??= await Language.load(
+    fileURLToPath(new URL("../assets/tree-sitter/tree-sitter-python.wasm", import.meta.url)),
+  );
   const parser = new Parser();
   let tree;
   try {
-    parser.setLanguage(languages.get(language));
+    parser.setLanguage(language);
     tree = parser.parse(source);
     if (!tree || tree.rootNode.hasError) return null;
-    if (language === "python" && !validPython(tree.rootNode)) return null;
+    if (!validPython(tree.rootNode)) return null;
     return action(tree.rootNode);
   } finally {
     tree?.delete();
@@ -30,6 +24,11 @@ async function parse(source, language, action) {
   }
 }
 const field = (n, name) => n.childForFieldName(name);
+function unparenthesized(node) {
+  while (node?.type === "parenthesized_expression")
+    node = node.namedChildren.find((child) => child.type !== "comment");
+  return node;
+}
 const definition = (n) => (n.type === "decorated_definition" ? field(n, "definition") : n);
 const isDefinition = (n) =>
   ["function_definition", "class_definition"].includes(definition(n)?.type);
@@ -49,7 +48,7 @@ let syntaxChecks;
 function validPython(root) {
   // Let the native query engine skip nodes that cannot affect this compatibility policy.
   syntaxChecks ??= new Query(
-    languages.get("python"),
+    language,
     `[
     (exec_statement) (print_statement) (except_clause) (raise_statement) (for_in_clause)
     (concatenated_string) (function_definition) (class_definition) (integer)
@@ -68,7 +67,9 @@ function validPython(root) {
     if (n.type === "for_in_clause" && n.childrenForFieldName("right").length > 1) return false;
     if (
       n.type === "concatenated_string" &&
-      new Set(n.namedChildren.map((c) => /^[ru]*b/i.test(c.text))).size > 1
+      new Set(
+        n.namedChildren.filter((c) => c.type === "string").map((c) => /^[ru]*b/i.test(c.text)),
+      ).size > 1
     )
       return false;
     if (["function_definition", "class_definition"].includes(n.type) && !body(n).length)
@@ -111,9 +112,7 @@ function endLine(n) {
 function startLine(n) {
   if (n.type === "decorated_definition") {
     const decorator = n.namedChildren.find((c) => c.type === "decorator");
-    let expression = decorator?.namedChildren[0];
-    while (expression?.type === "parenthesized_expression")
-      expression = expression.namedChildren[0];
+    const expression = unparenthesized(decorator?.namedChildren[0]);
     return (expression ?? decorator ?? n).startPosition.row + 1;
   }
   return n.startPosition.row + 1;
@@ -195,9 +194,13 @@ function previewMatches(root, tokens) {
       first = statements[0];
     if (!first) continue;
     let implementation = first,
-      expr = first.type === "expression_statement" ? first.namedChildren[0] : undefined;
-    while (expr?.type === "parenthesized_expression") expr = expr.namedChildren[0];
-    const stringNodes = expr?.type === "concatenated_string" ? expr.namedChildren : [expr];
+      expr = unparenthesized(
+        first.type === "expression_statement" ? first.namedChildren[0] : undefined,
+      );
+    const stringNodes =
+      expr?.type === "concatenated_string"
+        ? expr.namedChildren.filter((c) => c.type === "string")
+        : [expr];
     if (
       stringNodes.length &&
       stringNodes.every((s) => s?.type === "string" && !/^[rub]*[fb]/i.test(s.text)) &&
@@ -231,71 +234,6 @@ function previewMatches(root, tokens) {
   }
   return matches.sort((a, b) => a.start - b.start || a.end - b.end);
 }
-function declarations(root, language) {
-  const units = [],
-    comments = [];
-  for (const n of walk(root))
-    if (n.type === "comment" || n.type.endsWith("_comment")) comments.push(range(n));
-  if (language === "go") {
-    for (const n of root.namedChildren) {
-      if (n.type === "comment" || n.type === "package_clause") continue;
-      if (n.type === "method_declaration") {
-        const receiver = field(n, "receiver")?.namedChildren[0];
-        const owner = receiver && field(receiver, "type")?.text.replace(/^\*/, "");
-        units.push({
-          name: (owner ? owner + "." : "") + (field(n, "name")?.text ?? ""),
-          range: range(n),
-        });
-      } else if (["type_declaration", "var_declaration", "const_declaration"].includes(n.type)) {
-        for (const spec of n.namedChildren.flatMap((c) =>
-          c.type === "var_spec_list" ? c.namedChildren : [c],
-        ))
-          if (field(spec, "name"))
-            units.push({
-              name: spec
-                .childrenForFieldName("name")
-                .map((n) => n.text)
-                .join(", "),
-              range: range(spec),
-            });
-      } else units.push({ name: (field(n, "name")?.text ?? "") || n.type, range: range(n) });
-    }
-  } else {
-    function visit(nodes, prefix = "", headers = []) {
-      for (const n of nodes) {
-        if (n.type.endsWith("comment") || n.type === "attribute_item") continue;
-        const container =
-          ["impl_item", "trait_item", "mod_item", "foreign_mod_item"].includes(n.type) &&
-          field(n, "body");
-        const owner = (field(n, "name")?.text ?? "") || field(n, "type")?.text || n.type;
-        if (container) {
-          const header = { startLine: startLine(n), endLine: container.startPosition.row + 1 };
-          units.push({
-            name: prefix + owner + ".context",
-            range: header,
-            ownerHeaders: [...headers, header],
-          });
-          visit(
-            container.namedChildren,
-            n.type === "foreign_mod_item" ? prefix : prefix + owner + ".",
-            [...headers, header],
-          );
-        } else {
-          let start = n;
-          while (start.previousNamedSibling?.type === "attribute_item")
-            start = start.previousNamedSibling;
-          units.push({
-            name: prefix + owner,
-            range: { startLine: startLine(start), endLine: endLine(n) },
-            ownerHeaders: headers,
-          });
-        }
-      }
-    }
-    visit(root.namedChildren);
-  }
-  return { units, comments };
-}
 function assignsSelf(target) {
   if (!target) return false;
   if (target.type === "identifier") return target.text.normalize("NFKC") === "self";
@@ -314,7 +252,6 @@ function uniqueDefinitions(nodes) {
   return map;
 }
 function calls(root, source, ranges) {
-  if (/\r(?!\n)/.test(source)) return [];
   const definitions = root.namedChildren
     .map(definition)
     .filter((n) => n?.type === "class_definition");
@@ -328,11 +265,8 @@ function calls(root, source, ranges) {
     bases.set(
       key,
       (field(n, "superclasses")?.namedChildren ?? [])
-        .filter((c) => c.type !== "keyword_argument")
-        .map((c) => {
-          while (c.type === "parenthesized_expression") c = c.namedChildren[0];
-          return c.text.normalize("NFKC");
-        }),
+        .filter((c) => c.type !== "keyword_argument" && c.type !== "comment")
+        .map((c) => unparenthesized(c).text.normalize("NFKC")),
     );
   }
   const memo = new Map();
@@ -424,12 +358,15 @@ function calls(root, source, ranges) {
         continue;
       for (const n of nodes) {
         if (n.type !== "call") continue;
-        const func = field(n, "function");
-        if (func?.type !== "attribute" || field(func, "object")?.text.normalize("NFKC") !== "self")
+        const func = unparenthesized(field(n, "function"));
+        if (
+          func?.type !== "attribute" ||
+          unparenthesized(field(func, "object"))?.text.normalize("NFKC") !== "self"
+        )
           continue;
         if (
           !ranges.some(
-            (r) => r.startLine <= n.startPosition.row + 1 && r.endLine >= n.endPosition.row + 1,
+            (r) => r.startLine <= n.startPosition.row + 1 && r.endLine >= n.startPosition.row + 1,
           )
         )
           continue;
@@ -475,21 +412,19 @@ function calls(root, source, ranges) {
   return result;
 }
 export async function execute(helper, input) {
-  if (helper === "inspect") return parse(input, "python", inspectPython);
+  if (helper === "inspect") return parse(input, inspectPython);
   const data = JSON.parse(input);
-  if (helper === "declarations")
-    return parse(data.source, data.language, (root) => declarations(root, data.language));
   if (helper === "neighborhood")
-    return parse(data.source, "python", (root) => neighborhood(root, data.ranges));
+    return parse(data.source, (root) => neighborhood(root, data.ranges));
   if (helper === "calls")
-    return parse(data.source, "python", (root) => calls(root, data.source, data.ranges));
+    return parse(data.source, (root) => calls(root, data.source, data.ranges));
   if (helper === "preview") {
     const tokens = new Set(
       data.query.normalize("NFKC").match(/[_\p{ID_Start}][_\p{ID_Continue}]*/gu) ?? [],
     );
     let matches = [];
     if (/\.pyi?$/.test(data.path) && Buffer.byteLength(data.text) > data.budget)
-      matches = await parse(data.text, "python", (root) => previewMatches(root, tokens));
+      matches = await parse(data.text, (root) => previewMatches(root, tokens));
     return preview(data, matches);
   }
   throw new Error("Unknown parser operation");

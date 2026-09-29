@@ -48,7 +48,7 @@ export async function validateRelease(tarball, tag, root = repository) {
   if (new Set(files).size !== files.length) throw new Error("Duplicate archive entries");
   for (const path of files)
     if (
-      !/^package\/(?:package\.json|README(?:\.md)?|LICENSE|dist\/(?:bin\/(?:index\.js|parser-(?:worker|helpers|preview)\.mjs)|assets\/(?:tree-sitter\/tree-sitter-(?:python|go|rust)\.wasm|README\.md)|skills\/jevgrep\/SKILL\.md|LICENSE|THIRD_PARTY_NOTICES\.txt))$/.test(
+      !/^package\/(?:package\.json|README(?:\.md)?|LICENSE|dist\/(?:bin\/(?:index\.js|parser-(?:worker|helpers|preview)\.mjs)|assets\/(?:tree-sitter\/tree-sitter-python\.wasm|README\.md)|skills\/jevgrep\/SKILL\.md|LICENSE|THIRD_PARTY_NOTICES\.txt))$/.test(
         path,
       )
     )
@@ -80,10 +80,10 @@ export async function validateRelease(tarball, tag, root = repository) {
       `dist/bin/${name}.mjs`,
       `packages/core/src/${name}.mjs`,
     ]),
-    ...["python", "go", "rust"].map((name) => [
-      `dist/assets/tree-sitter/tree-sitter-${name}.wasm`,
-      `packages/core/assets/tree-sitter/tree-sitter-${name}.wasm`,
-    ]),
+    [
+      "dist/assets/tree-sitter/tree-sitter-python.wasm",
+      "packages/core/assets/tree-sitter/tree-sitter-python.wasm",
+    ],
   ])
     if (!(await extract(packed)).equals(await readFile(resolve(root, original))))
       throw new Error(`Packaged ${packed} differs from its canonical source`);
