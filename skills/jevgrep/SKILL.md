@@ -1,6 +1,6 @@
 ---
 name: jevgrep
-description: Use Jevgrep (jg) to find relevant files and source excerpts from a natural-language repository question.
+description: Locate relevant code by asking a natural-language question with Jevgrep (jg). Use when investigating behavior, debugging, reviewing, or planning changes in a repository and the relevant files or symbols are not yet known — e.g. "where is X handled", "how does Y work", "what touches Z". Prefer this over rg/Grep/Glob or an Explore agent for that first orientation step; use rg/Grep once you know the exact identifier or string.
 ---
 
 # Jevgrep
